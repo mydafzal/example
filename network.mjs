@@ -1,0 +1,40 @@
+import DHT from "bitdht";
+import crypto from "crypto";
+
+const INSERT = 0;
+
+// Let's create 100 dht nodes for our example.
+const swarm = [];
+for (let i = 0; i < 100; i++) swarm[i] = createNode();
+
+function createNode() {
+  const node = new DHT({
+    ephemeral: false,
+    bootstrap: [
+      { host: "omega1.l1fe.network", port: 1776 },
+      // { host: "omega2.l1fe.network", port: 1776 },
+      // { host: "omega3.l1fe.network", port: 1776 },
+    ],
+  });
+
+  const values = new Map();
+
+  node.on("request", function (req) {
+    if (req.command === INSERT) {
+      if (req.token) {
+        const key = sha256(req.value).toString("hex");
+        values.set(key, req.value);
+        console.log("Storing", key, "-->", req.value.toString());
+        return req.reply(null);
+      }
+    }
+    const value = values.get(req.target.toString("hex"));
+    req.reply(value);
+  });
+
+  return node;
+}
+
+function sha256(val) {
+  return crypto.createHash("sha256").update(val).digest();
+}
